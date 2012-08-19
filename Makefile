@@ -1,3 +1,5 @@
+SHELL=bash
+
 # Magical number that splits 120806_bm_gullkorpus.conll 90/10.
 NO_SPLIT_N=67566
 DIRS=corpora models parsed scores
@@ -7,7 +9,6 @@ SV_NS=    1     2    5 \
 	    100   200  500 \
 	   1000  2000 5000 \
 	  10000 11042
-SV_MDL=$(foreach N, $(SV_NS), models/sv-lex-$N.mco models/sv-delex-$N.mco)
 SV_LEX_SCORES=$(foreach N, $(SV_NS), scores/no-sv-lex-$N.scores)
 SV_DELEX_SCORES=$(foreach N, $(SV_NS), scores/no-sv-delex-$N.scores)
 
@@ -15,15 +16,14 @@ DA_NS=    1     2    5 \
 	     10    20   50 \
 	    100   200  500 \
 	   1000  2000 5000 5190
-DA_MDL=$(foreach N, $(DA_NS), models/da-lex-$N.mco models/da-delex-$N.mco)
 DA_LEX_SCORES=$(foreach N, $(DA_NS), scores/no-da-lex-$N.scores)
 DA_DELEX_SCORES=$(foreach N, $(DA_NS), scores/no-da-delex-$N.scores)
 
 # Never delete intermediate files.
 .SECONDARY:
+.PHONY: all
 
-all:
-	@echo $(SV_MDL)
+all: no-sv-lex.dat no-sv-delex.dat no-da-lex.dat no-da-delex.dat
 
 # Parser targets:
 models/sv-%.mco: corpora/sv-train-%.conll | models
@@ -65,11 +65,12 @@ corpora/%-delex.conll: corpora/%-lex.conll scripts/delex.awk
 	awk -f scripts/delex.awk $< > $@
 
 # TODO: Make sure using a delex parser on lex data doesn't perform differently.
-no-train.conll: 120806_bm_gullkorpus.conll
-	sed 's/ /_/g' < $< | awk 'BEGIN { OFS = "\t" } NF > 0 { $$8 = "dep" } { print }' | head -n $(NO_SPLIT_N) > $@
+# TODO: pos-map Norwegian data!
+no-train.conll: 120806_bm_gullkorpus.conll scripts/pos-map.pl
+	./scripts/pos-map.pl --source=no <(sed 's/ /_/g' $<) | head -n $(NO_SPLIT_N) > $@
 
-no-test.conll: 120806_bm_gullkorpus.conll
-	sed 's/ /_/g' < $< | awk 'BEGIN { OFS = "\t" } NF > 0 { $$8 = "dep" } { print }' | tail -n +`expr $(NO_SPLIT_N) + 1` > $@
+no-test.conll: 120806_bm_gullkorpus.conll scripts/pos-map.pl
+	./scripts/pos-map.pl --source=no <(sed 's/ /_/g' $<) | tail -n +`expr $(NO_SPLIT_N) + 1` > $@
 
 # Misc. targets:
 $(DIRS):
@@ -78,10 +79,10 @@ $(DIRS):
 data/swedish/talbanken05/train/swedish_talbanken05_train.conll \
 data/danish/ddt/train/danish_ddt_train.conll: data
 
-scripts/pos-map.pl: | interset
-
 interset: interset.zip
 	unzip $<
+	mkdir -p interset/lib/tagset/no
+	cp conll.pm interset/lib/tagset/no
 
 interset.zip:
 	wget http://ufal.mff.cuni.cz/~zeman/download.php?f=interset-v1.2.zip -O $@

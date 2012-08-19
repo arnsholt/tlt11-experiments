@@ -13,10 +13,12 @@ use Getopt::Long;
 
 use tagset::common;
 use tagset::da::conll;
+use tagset::no::conll;
 use tagset::sv::mamba;
 
 my %sources = (
     da => \&tagset::da::conll::decode,
+    no => \&tagset::no::conll::decode,
     sv => \&tagset::sv::mamba::decode,
 );
 
@@ -27,7 +29,7 @@ usage(die => 1) if not $result or not defined $source or not exists $sources{$so
 
 sub usage {
     my %args = @_;
-    say STDERR "Usage: $0 --source=(da|sv) FILE";
+    say STDERR "Usage: $0 --source=(da|no|sv) FILE";
     exit($args{die} // 0);
 }
 
@@ -44,7 +46,7 @@ while(my $line = <$file>) {
 
     my @fields = split m/\s+/o, $line;
     die "Wrong no. of fields: " . join '/', @fields if @fields != 10;
-    my $tag = $sources{$source}->($source eq 'dk'? join ' ', @fields[3, 4, 5] : $fields[3]);
+    my $tag = $sources{$source}->($source ne 'sv'? join ' ', @fields[3, 4, 5] : $fields[3]);
     $tag = $tag->{pos} // 'undefined';
     @fields[3, 4, 5, 7] = ($tag, $tag, '_', 'dep');
     say @fields;
