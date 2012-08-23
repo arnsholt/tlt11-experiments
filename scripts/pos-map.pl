@@ -47,7 +47,9 @@ while(my $line = <$file>) {
     my @fields = split m/\s+/o, $line;
     die "Wrong no. of fields: " . join '/', @fields if @fields != 10;
     my $tag = $sources{$source}->($source ne 'sv'? join ' ', @fields[3, 4, 5] : $fields[3]);
-    $tag = $tag->{pos} // 'undefined';
-    @fields[3, 4, 5, 7] = ($tag, $tag, '_', 'dep');
+    my $pos = $tag->{pos} // 'undefined';
+    my $feats = join '|', map {"$_=$tag->{$_}"} grep {$_ ne 'pos' and $_ ne 'tagset'} keys %$tag;
+    $feats ||= '_';
+    @fields[3, 4, 5, 7] = ($pos, $pos, $feats, 'dep');
     say @fields;
 }
