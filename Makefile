@@ -32,11 +32,17 @@ models/sv-%.mco: corpora/sv-train-%.conll | models
 models/da-%.mco: corpora/da-train-%.conll | models
 	cd models && malt -c `basename $@` -m learn -l liblinear -a nivreeager -i ../$<
 
-parsed/no-%.conll: models/%.mco no-test.conll | parsed
-	cd models && malt -c `basename $<` -m parse -i ../no-test.conll -o ../$@
+parsed/no-sv-conv-%.conll: models/sv-conv-%.mco corpora/no-test-bare.conll | parsed
+	cd models && malt -c `basename $<` -m parse -i ../corpora/no-test-bare.conll -o ../$@
 
-scores/%.scores: parsed/%.conll no-test.conll | scores
-	./scripts/eval.pl -pq -s $< -g no-test.conll > $@
+parsed/no-%.conll: models/%.mco corpora/no-test.conll | parsed
+	cd models && malt -c `basename $<` -m parse -i ../corpora/no-test.conll -o ../$@
+
+scores/no-sv-conv-%.scores: parsed/no-sv-conv-%.conll corpora/no-test-bare.conll | scores
+	./scripts/eval.pl -q -s $< -g corpora/no-test-bare.conll > $@
+
+scores/%.scores: parsed/%.conll corpora/no-test.conll | scores
+	./scripts/eval.pl -q -s $< -g corpora/no-test.conll > $@
 
 # Data aggregation:
 no-sv-lex.dat: $(SV_LEX_SCORES)
@@ -53,6 +59,8 @@ corpora/sv-train-lex-%.conll: corpora/sv-train-lex.conll
 	awk -vcount=$* -f scripts/corpus-select.awk $< > $@
 corpora/sv-train-delex-%.conll: corpora/sv-train-delex.conll
 	awk -vcount=$* -f scripts/corpus-select.awk $< > $@
+corpora/sv-train-conv-lex.conll: data/swedish/talbanken05/train/swedish_talbanken05_train.conll scripts/convert-sv.pl | corpora
+	./scripts/convert-sv.pl $< > $@
 
 corpora/da-train-lex.conll: data/danish/ddt/train/danish_ddt_train.conll scripts/pos-map.pl | corpora
 	./scripts/pos-map.pl --source=da $< > $@
@@ -65,12 +73,14 @@ corpora/%-delex.conll: corpora/%-lex.conll scripts/delex.awk
 	awk -f scripts/delex.awk $< > $@
 
 # TODO: Make sure using a delex parser on lex data doesn't perform differently.
-# TODO: pos-map Norwegian data!
-no-train.conll: 120806_bm_gullkorpus.conll scripts/pos-map.pl
+corpora/no-train.conll: 120806_bm_gullkorpus.conll scripts/pos-map.pl
 	./scripts/pos-map.pl --source=no <(sed 's/ /_/g' $<) | head -n $(NO_SPLIT_N) > $@
 
-no-test.conll: 120806_bm_gullkorpus.conll scripts/pos-map.pl
+corpora/no-test.conll: 120806_bm_gullkorpus.conll scripts/pos-map.pl
 	./scripts/pos-map.pl --source=no <(sed 's/ /_/g' $<) | tail -n +`expr $(NO_SPLIT_N) + 1` > $@
+
+corpora/no-test-bare.conll: 120806_bm_gullkorpus.conll
+	sed 's/ /_/g' $< | tail -n +`expr $(NO_SPLIT_N) + 1` > $@
 
 # Misc. targets:
 $(DIRS):
@@ -92,3 +102,4 @@ data:
 	curl http://ilk.uvt.nl/conll/data/danish/conll06_data_danish_ddt_train_v1.1.tar.bz2 | tar xj
 	curl http://ilk.uvt.nl/conll/data/swedish/conll06_data_swedish_talbanken05_train_v1.1.tar.bz2 | tar xj
 	curl http://ilk.uvt.nl/conll/data/conll06_data_free_test.tar.bz2 | tar xj
+	patch data/swedish/talbanken05/train/swedish_talbanken05_train.conll talbanken.patch

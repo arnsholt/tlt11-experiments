@@ -1,0 +1,13 @@
+--- swedish_talbanken05_train.conll	2012-06-27 15:42:10.021424000 +0200
++++ swedish_talbanken05_train-mod.conll	2012-06-27 15:43:37.163153000 +0200
+@@ -169901,8 +169901,8 @@
+ 19	'	_	IC	IC	_	4	JC	_	_
+ 
+ 1	(	_	IR	IR	_	3	IR	_	_
+-2	222	_	MN	MN	_	3	DT	_	_
+-3	stockholmspojkar	_	ID	ID	_	0	ROOT	_	_
++2	222	_	MN	MN	_	0	ROOT	_	_
++3	stockholmspojkar	_	ID	ID	_	2	HD	_	_
+ 4	,	_	IK	IK	_	3	IK	_	_
+ 5	s.	_	NN	NN	_	6	DT	_	_
+ 6	306	_	RO	RO	_	3	ET	_	_
