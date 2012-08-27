@@ -32,13 +32,22 @@ models/sv-%.mco: corpora/sv-train-%.conll | models
 models/da-%.mco: corpora/da-train-%.conll | models
 	cd models && malt -c `basename $@` -m learn -l liblinear -a nivreeager -i ../$<
 
+models/comb-%.mco: corpora/comb-train-%.conll | models
+	cd models && malt -c `basename $@` -m learn -l liblinear -a nivreeager -i ../$<
+
 parsed/no-sv-conv-%.conll: models/sv-conv-%.mco corpora/no-test-bare.conll | parsed
+	cd models && malt -c `basename $<` -m parse -i ../corpora/no-test-bare.conll -o ../$@
+
+parsed/no-da-conv-%.conll: models/da-conv-%.mco corpora/no-test-bare.conll | parsed
 	cd models && malt -c `basename $<` -m parse -i ../corpora/no-test-bare.conll -o ../$@
 
 parsed/no-%.conll: models/%.mco corpora/no-test.conll | parsed
 	cd models && malt -c `basename $<` -m parse -i ../corpora/no-test.conll -o ../$@
 
 scores/no-sv-conv-%.scores: parsed/no-sv-conv-%.conll corpora/no-test-bare.conll | scores
+	./scripts/eval.pl -q -s $< -g corpora/no-test-bare.conll > $@
+
+scores/no-da-conv-%.scores: parsed/no-da-conv-%.conll corpora/no-test-bare.conll | scores
 	./scripts/eval.pl -q -s $< -g corpora/no-test-bare.conll > $@
 
 scores/%.scores: parsed/%.conll corpora/no-test.conll | scores
@@ -68,6 +77,11 @@ corpora/da-train-lex-%.conll: corpora/da-train-lex.conll
 	awk -vcount=$* -f scripts/corpus-select.awk $< > $@
 corpora/da-train-delex-%.conll: corpora/da-train-delex.conll
 	awk -vcount=$* -f scripts/corpus-select.awk $< > $@
+corpora/da-train-conv-lex.conll: data/danish/ddt/train/danish_ddt_train.conll scripts/convert-da.pl | corpora
+	./scripts/convert-da.pl $< > $@
+
+corpora/comb-train-lex.conll: corpora/da-train-lex.conll corpora/sv-train-lex.conll
+	cat $^ > $@
 
 corpora/%-delex.conll: corpora/%-lex.conll scripts/delex.awk
 	awk -f scripts/delex.awk $< > $@
