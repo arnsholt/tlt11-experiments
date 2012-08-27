@@ -96,7 +96,7 @@ sub posmap {
             }
         }
 
-        $w->feats(\@new);
+        $w->feats(@new? \@new : undef);
     }
 
     $w->postag($pos);
