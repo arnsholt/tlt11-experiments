@@ -50,6 +50,6 @@ while(my $line = <$file>) {
     my $pos = $tag->{pos} // 'undefined';
     my $feats = join '|', map {"$_=$tag->{$_}"} grep {$_ ne 'pos' and $_ ne 'tagset'} keys %$tag;
     $feats ||= '_';
-    @fields[3, 4, 5, 7] = ($pos, $pos, $feats, 'dep');
+    @fields[3, 4, 5] = ($pos, $pos, $feats);
     say @fields;
 }

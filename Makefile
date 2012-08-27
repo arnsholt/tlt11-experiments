@@ -23,7 +23,9 @@ DA_DELEX_SCORES=$(foreach N, $(DA_NS), scores/no-da-delex-$N.scores)
 .SECONDARY:
 .PHONY: all
 
-all: no-sv-lex.dat no-sv-delex.dat no-da-lex.dat no-da-delex.dat
+all: no-sv-lex.dat no-sv-delex.dat no-da-lex.dat no-da-delex.dat \
+	scores/no-sv-conv-lex.scores scores/no-sv-conv-delex.scores \
+	scores/no-da-conv-lex.scores scores/no-da-conv-delex.scores
 
 # Parser targets:
 models/sv-%.mco: corpora/sv-train-%.conll | models
@@ -35,23 +37,26 @@ models/da-%.mco: corpora/da-train-%.conll | models
 models/comb-%.mco: corpora/comb-train-%.conll | models
 	cd models && malt -c `basename $@` -m learn -l liblinear -a nivreeager -i ../$<
 
-parsed/no-sv-conv-%.conll: models/sv-conv-%.mco corpora/no-test-bare.conll | parsed
-	cd models && malt -c `basename $<` -m parse -i ../corpora/no-test-bare.conll -o ../$@
-
-parsed/no-da-conv-%.conll: models/da-conv-%.mco corpora/no-test-bare.conll | parsed
-	cd models && malt -c `basename $<` -m parse -i ../corpora/no-test-bare.conll -o ../$@
-
 parsed/no-%.conll: models/%.mco corpora/no-test.conll | parsed
 	cd models && malt -c `basename $<` -m parse -i ../corpora/no-test.conll -o ../$@
 
-scores/no-sv-conv-%.scores: parsed/no-sv-conv-%.conll corpora/no-test-bare.conll | scores
-	./scripts/eval.pl -q -s $< -g corpora/no-test-bare.conll > $@
-
-scores/no-da-conv-%.scores: parsed/no-da-conv-%.conll corpora/no-test-bare.conll | scores
-	./scripts/eval.pl -q -s $< -g corpora/no-test-bare.conll > $@
-
 scores/%.scores: parsed/%.conll corpora/no-test.conll | scores
 	./scripts/eval.pl -q -s $< -g corpora/no-test.conll > $@
+
+## Conv parsers have to be tested on a different test corpus than the plain
+## ones, since the corpora/no-test.conll has interset tags, while we want to
+## test on plain OBT tags.
+parsed/no-sv-conv-%.conll: models/sv-conv-%.mco corpora/no-test-conv.conll | parsed
+	cd models && malt -c `basename $<` -m parse -i ../corpora/no-test-conv.conll -o ../$@
+
+parsed/no-da-conv-%.conll: models/da-conv-%.mco corpora/no-test-conv.conll | parsed
+	cd models && malt -c `basename $<` -m parse -i ../corpora/no-test-conv.conll -o ../$@
+
+scores/no-sv-conv-%.scores: parsed/no-sv-conv-%.conll corpora/no-test-conv.conll | scores
+	./scripts/eval.pl -q -s $< -g corpora/no-test-conv.conll > $@
+
+scores/no-da-conv-%.scores: parsed/no-da-conv-%.conll corpora/no-test-conv.conll | scores
+	./scripts/eval.pl -q -s $< -g corpora/no-test-conv.conll > $@
 
 # Data aggregation:
 no-sv-lex.dat: $(SV_LEX_SCORES)
@@ -86,14 +91,13 @@ corpora/comb-train-lex.conll: corpora/da-train-lex.conll corpora/sv-train-lex.co
 corpora/%-delex.conll: corpora/%-lex.conll scripts/delex.awk
 	awk -f scripts/delex.awk $< > $@
 
-# TODO: Make sure using a delex parser on lex data doesn't perform differently.
-corpora/no-train.conll: 120806_bm_gullkorpus.conll scripts/pos-map.pl
+corpora/no-train.conll: 120806_bm_gullkorpus.conll scripts/pos-map.pl | corpora
 	./scripts/pos-map.pl --source=no <(sed 's/ /_/g' $<) | head -n $(NO_SPLIT_N) > $@
 
-corpora/no-test.conll: 120806_bm_gullkorpus.conll scripts/pos-map.pl
+corpora/no-test.conll: 120806_bm_gullkorpus.conll scripts/pos-map.pl | corpora
 	./scripts/pos-map.pl --source=no <(sed 's/ /_/g' $<) | tail -n +`expr $(NO_SPLIT_N) + 1` > $@
 
-corpora/no-test-bare.conll: 120806_bm_gullkorpus.conll
+corpora/no-test-conv.conll: 120806_bm_gullkorpus.conll | corpora
 	sed 's/ /_/g' $< | tail -n +`expr $(NO_SPLIT_N) + 1` > $@
 
 # Misc. targets:
@@ -111,7 +115,6 @@ interset: interset.zip
 interset.zip:
 	wget http://ufal.mff.cuni.cz/~zeman/download.php?f=interset-v1.2.zip -O $@
 
-# TODO: Czech data?
 data:
 	curl http://ilk.uvt.nl/conll/data/danish/conll06_data_danish_ddt_train_v1.1.tar.bz2 | tar xj
 	curl http://ilk.uvt.nl/conll/data/swedish/conll06_data_swedish_talbanken05_train_v1.1.tar.bz2 | tar xj
