@@ -27,6 +27,10 @@ all: no-sv-lex.dat no-sv-delex.dat no-da-lex.dat no-da-delex.dat \
 	scores/no-sv-conv-lex.scores scores/no-sv-conv-delex.scores \
 	scores/no-da-conv-lex.scores scores/no-da-conv-delex.scores
 
+# Lexical overlap targets:
+no-%.overlap: corpora/%-train-lex.conll scripts/lexical-overlaps.awk
+	awk -vbase=$< -f scripts/lexical-overlaps.awk corpora/no-test.conll | sort -nrk 2 > $@
+
 # Parser targets:
 models/sv-%.mco: corpora/sv-train-%.conll | models
 	cd models && malt -c `basename $@` -m learn -l liblinear -a nivreeager -i ../$<
