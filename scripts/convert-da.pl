@@ -164,7 +164,7 @@ sub fix_deps {
         # Attach any other children of the determiner to the word instead.
         for my $adj (@{$head->children}) {
             $head->_delete_child($adj);
-            $w->_add_child($adj);
+            $w->_add_child($adj, resort => 1);
             $adj->head($w);
         }
 
@@ -176,5 +176,31 @@ sub fix_deps {
 
         $w->deprel($head->deprel);
         $head->deprel('DET');
+    }
+    # subordinators
+    elsif($pos eq 'CS') {
+        my @children = map {$_->postag . "/" . $_->deprel} @{$w->children};
+        my @verb = grep {$_->cpostag eq 'V'} @{$w->children};
+        return if @verb != 1;
+
+        my $head = $w->head;
+        my $verb = $verb[0];
+
+        # Move other dependents of the subordinator to the verb.
+        for my $x (@{$w->children}) {
+            $w->_delete_child($x);
+            $verb->_add_child($x, resort => 1);
+            $x->head($verb);
+        }
+
+        $head->_delete_child($w);
+        $w->_delete_child($verb);
+
+        $head->_add_child($verb, resort => 1);
+        $verb->_add_child($w, resort => 1);
+
+        $verb->head($head);
+        $w->head($verb);
+        # TODO: Deprels
     }
 }

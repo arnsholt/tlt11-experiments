@@ -41,12 +41,6 @@ models/da-%.mco: corpora/da-train-%.conll | models
 models/comb-%.mco: corpora/comb-train-%.conll | models
 	cd models && malt -c `basename $@` -m learn -l liblinear -a nivreeager -i ../$<
 
-parsed/no-%.conll: models/%.mco corpora/no-test.conll | parsed
-	cd models && malt -c `basename $<` -m parse -i ../corpora/no-test.conll -o ../$@
-
-scores/%.scores: parsed/%.conll corpora/no-test.conll | scores
-	./scripts/eval.pl -q -s $< -g corpora/no-test.conll > $@
-
 ## Conv parsers have to be tested on a different test corpus than the plain
 ## ones, since the corpora/no-test.conll has interset tags, while we want to
 ## test on plain OBT tags.
@@ -61,6 +55,12 @@ scores/no-sv-conv-%.scores: parsed/no-sv-conv-%.conll corpora/no-test-conv.conll
 
 scores/no-da-conv-%.scores: parsed/no-da-conv-%.conll corpora/no-test-conv.conll | scores
 	./scripts/eval.pl -q -s $< -g corpora/no-test-conv.conll > $@
+
+parsed/no-%.conll: models/%.mco corpora/no-test.conll | parsed
+	cd models && malt -c `basename $<` -m parse -i ../corpora/no-test.conll -o ../$@
+
+scores/%.scores: parsed/%.conll corpora/no-test.conll | scores
+	./scripts/eval.pl -q -s $< -g corpora/no-test.conll > $@
 
 # Data aggregation:
 no-sv-lex.dat: $(SV_LEX_SCORES)
