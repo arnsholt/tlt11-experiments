@@ -52,14 +52,92 @@ my %featmap = (case => {nom => 'nom', gen => 'gen'},
                degree => {pos => 'pos', comp => 'kom', sup => 'sup'},
            );
 
+my %depmap = qw{aobj  ADV
+                appa  APP
+                appr  APP
+                avobj ADV
+                conj  KONJ
+                coord KOORD
+                dobj  DOBJ
+                expl  FSUBJ
+                iobj  IOBJ
+                list  ATR
+                lobj  ADV
+                mod   ATR
+                modo  ADV
+                modp  APP
+                modr  ATR
+                mods  ADV
+                name  APP
+                namef ATR
+                namel ATR
+                numa  DET
+                numm  DET
+                obl   ADV
+                part  ADV
+                pnct  IK
+                pobj  ADV
+                possd possd
+                pred  SPRED
+                qobj  PAR
+                subj  SUBJ
+                title APP
+                tobj  ADV
+                vobj  INFV
+                voc   PAR
+                xpl   PAR
+                xtop  APP};
+                #err   ?
+                #pnct  IP/IK
+                #rel   ATR/ADV
+                #rep   ?
+
 my $corpus = Lingua::CoNLLX->new(file => $ARGV[0]);
 
 for my $s (@{$corpus->sentences}) {
-    # TODO: Deprel tagset mapping
+    $s->iterate(\&depmap);
     $s->iterate(\&fix_deps);
     $s->iterate(\&posmap);
 
     print $s, "\n\n";
+}
+
+sub depmap {
+    my $w = $_;
+    my $rel = $w->deprel;
+
+    # Unroll chains of nobjs.
+    my $x = $w;
+    while($rel eq 'nobj') {
+        $rel = $x->head->deprel;
+        $x = $x->head;
+    }
+    return if $rel ne 'ROOT' and $rel =~ m/[A-Z]+/msxo; # Hack to handle already mapped rels.
+
+    $rel = $1 if $rel =~ m/\A < (.+) > \z/msxo;
+
+    # Hack, hack, hack.
+    $rel = "rel" if $rel eq 'vobj' and lc($w->head->form) eq 'som' and $w->head->postag eq 'U';
+
+    if(exists $depmap{$rel}) {
+        $rel = $depmap{$rel};
+    }
+    elsif(lc($w->form) eq 'som' and $w->postag eq 'U') {
+        $rel = 'SBUREL';
+    }
+    elsif($rel eq 'ROOT') {
+        my $pos = $w->postag;
+        $rel = $pos eq 'I'? 'INTERJ': 'FINV';
+    }
+    elsif($rel eq 'rel') {
+        my $headpos = $w->head->postag;
+        $rel = $headpos eq 'RG' || $headpos eq 'SP' ? 'ADV': 'ATR';
+    }
+    else {
+        $rel = "$rel???";
+    }
+
+    $w->deprel($rel);
 }
 
 sub posmap {
@@ -125,11 +203,11 @@ sub fix_deps {
         $w->head($headhead);
 
         $w->deprel($head->deprel);
-        $head->deprel('possr'); # TODO: possr --> DET
+        $head->deprel('DET');
     }
     # coordination
-    elsif($rel eq 'coord' and $w->form eq 'og') {
-        my @children = grep { $_->deprel eq 'conj' } @{$w->children};
+    elsif($rel eq 'KOORD' and $w->form eq 'og') {
+        my @children = grep { $_->deprel eq 'KONJ' } @{$w->children};
         return if @children != 1; # 46 coords have no conj children. We ignore those
 
         my $head = $w->head;
