@@ -1,0 +1,9 @@
+.*.swp
+corpora
+data
+interset*
+models
+parsed
+scores
+no-*
+*.dat
